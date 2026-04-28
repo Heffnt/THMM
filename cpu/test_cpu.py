@@ -13,7 +13,7 @@ as `pytest test_cpu.py` — the tests are plain functions that assert.
 
 from cpu import (
     # width helpers
-    zeros, from_int, to_uint,
+    zeros, from_int, to_uint, to_sint,
     # combinational
     and2, not1, nor16, mux2_8, mux2_16, alu, decoder, ram_read,
     # edge updates
@@ -398,6 +398,80 @@ def test_fib_result_is_8():
     load_program(state, FIB_PROGRAM)
     run(state, max_cycles=500)
     assert to_uint(state['acc']) == 8
+
+
+# ==========================================================================
+# Layer 5: end-to-end, compiler + simulator
+# ==========================================================================
+#
+# Compile THCC's regression.thcc example with the Haskell compiler, load
+# the output into the CPU, and verify the linear-regression result lands
+# in the RAM addresses the compiler reported. This is the one test that
+# proves the whole stack works — if it fails, the regression could be in
+# either project, and that's the point. Failure in any earlier layer is
+# usually easier to localize.
+#
+# Requires: `cabal` available on PATH and the THCC project built at
+# ../THCC/. Skipped (not failed) if the thcc executable can't be located.
+
+import os
+import re
+import subprocess
+
+THCC_DIR = os.path.normpath(os.path.join(os.path.dirname(__file__), '..', 'THCC'))
+REGRESSION_SRC = os.path.join(THCC_DIR, 'examples', 'regression.thcc')
+
+
+def _run_thcc(args, capture=True):
+    """Invoke `cabal run thcc -- <args>` from the THCC dir.
+
+    `cabal -v0 run` suppresses its own chatter so stdout is the
+    compiler's output only. Returns the completed-process object.
+    """
+    cmd = ['cabal', '-v0', 'run', 'thcc', '--'] + list(args)
+    return subprocess.run(
+        cmd, cwd=THCC_DIR, check=True,
+        capture_output=capture, text=True,
+    )
+
+
+def _compile_to_bits_and_varmap():
+    """Run THCC twice: once for the bit-string program, once for the asm
+    listing (which prints a `; variables:` footer we can scrape for
+    addresses).
+    """
+    bits = _run_thcc([REGRESSION_SRC, '--bits']).stdout.splitlines()
+    asm  = _run_thcc([REGRESSION_SRC, '--asm']).stdout
+    varmap = {}
+    for m in re.finditer(r';\s+(\w+)\s+->\s+RAM\[(\d+)\]', asm):
+        varmap[m.group(1)] = int(m.group(2))
+    return bits, varmap
+
+
+def test_thcc_regression_produces_w_eq_2_and_b_eq_1():
+    # Skip if cabal isn't on PATH — the CPU-only tests should still work.
+    try:
+        subprocess.run(['cabal', '--version'], check=True, capture_output=True)
+    except (FileNotFoundError, subprocess.CalledProcessError):
+        print("skip  test_thcc_regression_produces_w_eq_2_and_b_eq_1: cabal not available")
+        return
+
+    program, varmap = _compile_to_bits_and_varmap()
+
+    state = init_state()
+    load_program(state, program)
+    cycles = run(state, max_cycles=5000)
+    assert state['halted'] == '1', "program did not halt within budget"
+    assert cycles < 5000
+
+    # The demo data lies exactly on y = 2x + 1, so the expected optimal
+    # slope and intercept are 2 and 1.
+    w_addr = varmap['w']
+    b_addr = varmap['b']
+    w_val  = to_sint(state['ram'][w_addr])
+    b_val  = to_sint(state['ram'][b_addr])
+    assert w_val == 2, f"expected w=2 at RAM[{w_addr}], got {w_val}"
+    assert b_val == 1, f"expected b=1 at RAM[{b_addr}], got {b_val}"
 
 
 # ==========================================================================

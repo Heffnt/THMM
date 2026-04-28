@@ -1,3 +1,24 @@
 __pycache__/
 *.pyc
+
 .claude/
+
+# Cabal / GHC build outputs
+dist-newstyle/
+*.hi
+*.o
+*.exe
+
+# Local generated compiler outputs
+*.asm
+*.bits
+*.hex
+*.tix
+!THCC/examples/*.expected.asm
+!THCC/examples/*.expected.hex
+
+# Local editor workspace
+THMM+tom.quest.code-workspace
+
+# Course handout, not part of the project artifact
+ProjectGuide.pdf

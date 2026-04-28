@@ -36,10 +36,10 @@ The educational thesis is end-to-end transparency: a student can write a high-le
 
 ### 2.1 Architecture Summary
 
-- **Data width:** 8-bit (values from -128 to 127 after the signed arithmetic modification)
+- **Data width:** 16-bit two's-complement values in RAM and the accumulator
 - **Instruction width:** 16-bit
-- **Instruction format:** 4-bit opcode, 4 unused bits, 8-bit operand
-- **Memory:** 256 words, shared between program instructions and data (Von Neumann architecture)
+- **Instruction format:** 4-bit opcode, 4 unused bits, 8-bit operand/address field
+- **Memory:** 256 16-bit words, shared between program instructions and data (Von Neumann architecture)
 - **Registers:** Single accumulator. No other general-purpose registers. There is also a program counter (not directly accessible).
 - **Instruction set (current, relevant to this project):**
 
@@ -61,11 +61,11 @@ The educational thesis is end-to-end transparency: a student can write a high-le
 
 - **Hex encoding:** Opcode in top nibble, operand in bottom byte. For example, `loadn 5` = `0x3005`, `store 80` = `0x4050`, `mulm 81` = `0xB051`.
 
-### 2.2 Required Hardware Modification: Signed Arithmetic
+### 2.2 Signed Arithmetic Model
 
-**What changes:** The multiplier and divider in the ALU must be replaced with signed (two's complement) versions. `0xFF × 0x02` must produce `-2` (interpreting `0xFF` as `-1`), not `510` (interpreting it as `255`).
+The current simulator already uses signed two's-complement arithmetic throughout the ALU. Addition, subtraction, and multiplication wrap to 16 bits, and division truncates toward zero (C-style) with a deterministic divide-by-zero result of 0.
 
-**What does NOT change:** Addition and subtraction already produce correct results under two's complement — this is a well-known property of the representation. The bit patterns are identical whether you interpret values as signed or unsigned. Instruction encoding, memory layout, program counter logic, and all non-arithmetic instructions are unaffected.
+Instruction encoding, memory layout, program counter logic, and all non-arithmetic instructions are unaffected by the signed interpretation. The compiler emits the same bit patterns; the CPU decides how arithmetic interprets them.
 
 **Why not also add branch instructions, shift, or indirect addressing:** Those are needed for control flow, fixed-point math, and arrays respectively. None of those features are needed for the normal equation demo, which is pure straight-line arithmetic. Keeping the hardware changes minimal reduces scope risk for a solo project and keeps the educational story clean: "we changed one thing in the hardware and it unlocked a useful application."
 
@@ -77,12 +77,13 @@ The compiler only emits the following instructions:
 - `loadm n` — to load a variable or temporary into the accumulator
 - `store n` — to save the accumulator to a variable or temporary
 - `addm n` — addition
+- `addn n` — immediate addition when the right-hand operand is a literal
 - `subm n` — subtraction
 - `mulm n` — multiplication
 - `divm n` — division
 - `halt` — to end the program
 
-That's 8 out of 13 instructions. The compiler never emits `nop`, `goto`, `gotoa`, `goif0`, or `addn` because the core language has no control flow and no need for immediate addition.
+That's 9 out of 13 instructions. The compiler never emits `nop`, `goto`, `gotoa`, or `goif0` because the core language has no control flow.
 
 ---
 
@@ -108,7 +109,7 @@ Five rules. This is the entire language.
 - Operator precedence: `*` and `/` bind tighter than `+` and `-` (standard C precedence)
 - Parenthesized subexpressions to override precedence
 - Variable references in expressions
-- Integer literals (must fit in signed 8-bit: -128 to 127)
+- Integer literals (must fit in the 8-bit immediate field: 0 to 255)
 - C-style single-line comments (`// comment`) — nice to have, trivial to implement in the lexer
 
 ### 3.3 What the Language Does NOT Support
@@ -152,7 +153,7 @@ Data points: (1, 3), (2, 5), (3, 7)
 
 These lie exactly on the line y = 2x + 1, so the expected output is w = 2, b = 1.
 
-These data points were chosen because every intermediate value in the computation fits in signed 8-bit range (-128 to 127):
+These data points were chosen because every intermediate value in the computation is small enough to verify by hand:
 
 ```
 sum_x  = 1 + 2 + 3 = 6          ✓
@@ -169,7 +170,7 @@ sum_y - 12 = 3                  ✓
 b = 3 / 3 = 1                   ✓
 ```
 
-The largest intermediate value is 102, well within the signed 8-bit range. This is intentional — the demo must not overflow.
+The largest intermediate value is 102, well within the 16-bit signed data range and the 8-bit literal range. This is intentional — the demo must not overflow.
 
 ### 4.4 The THCC Source Code
 
@@ -201,28 +202,25 @@ The compiler is a three-stage pipeline: Lexer → Parser → Code Generator. Eac
 ### 5.1 Project Structure
 
 ```
-thcc/
-├── app/
-│   └── Main.hs              -- CLI entry point: reads input file, runs pipeline, writes output
-├── src/
-│   ├── THCC/
-│   │   ├── Lexer.hs         -- Tokenization (Megaparsec-based)
-│   │   ├── Parser.hs        -- Parsing tokens into AST (Megaparsec-based)
-│   │   ├── AST.hs           -- AST data type definitions
-│   │   ├── CodeGen.hs       -- AST to THMM instruction list
-│   │   ├── THMM.hs          -- THMM instruction data type and serialization (assembly text + hex)
-│   │   └── SymbolTable.hs   -- Variable-to-address mapping
+THCC/
+├── Main.hs                  -- CLI entry point: reads input file, runs pipeline, writes output
+├── AST.hs                   -- AST data type definitions
+├── Parser.hs                -- Lexing helpers + Megaparsec parser
+├── CodeGen.hs               -- Symbolic code generation, linking, and compile facade
+├── THMM.hs                  -- THMM instruction data type and serialization
 ├── test/
 │   ├── LexerSpec.hs
 │   ├── ParserSpec.hs
 │   ├── CodeGenSpec.hs
-│   └── IntegrationSpec.hs   -- Full pipeline tests (source → expected hex output)
+│   ├── IntegrationSpec.hs   -- Full pipeline tests
+│   └── PropSpec.hs          -- QuickCheck properties
 ├── examples/
 │   ├── regression.thcc      -- The linear regression demo
-│   ├── fibonacci.thcc       -- If control flow is added; otherwise hand-comparison
-│   └── simple.thcc          -- Minimal test programs
+│   ├── regression.expected.asm
+│   ├── regression.expected.hex
+│   └── simple.thcc          -- Minimal test program
 ├── thcc.cabal
-└── README.md                -- Evaluation guide: how to build, run, and verify
+└── cabal.project
 ```
 
 ### 5.2 Dependencies
@@ -450,6 +448,7 @@ data THMMInst
   | LoadN Int      -- loadn n:  acc = n
   | Store Int      -- store n:  RAM[n] = acc
   | AddM Int       -- addm n:   acc = acc + RAM[n]
+  | AddN Int       -- addn n:   acc = acc + n
   | SubM Int       -- subm n:   acc = acc - RAM[n]
   | MulM Int       -- mulm n:   acc = acc * RAM[n]
   | DivM Int       -- divm n:   acc = acc / RAM[n]
@@ -469,13 +468,13 @@ The solution is two passes:
 3. Count the maximum number of temporary addresses needed across all statements (see Section 8.5). Assign temporary addresses starting after the last user variable.
 
 **Pass 2 — Emit:**
-1. Walk the AST again, this time actually producing `THMMInst` values with the resolved addresses from the symbol table.
+1. Walk the AST again, this time actually producing `THMMInst` values with the resolved addresses from the address table.
 2. Append `Halt` at the end.
 
-### 8.4 The Symbol Table
+### 8.4 The Address Table
 
 ```haskell
-type SymbolTable = Map String Int
+type AddressTable = Map String Int
 ```
 
 Maps variable names to RAM addresses. Built during Pass 1.
@@ -549,7 +548,7 @@ MulM  [sum_xy]      -- acc = n * sum_xy
 
 No temporaries needed — the right operand is already sitting in RAM at a known address. This optimization is worth implementing because it significantly reduces instruction count and temporary usage for the many "simple" expressions in the regression program. The check is: if `right` is a `Var`, you can use its address directly in the operation instruction; if `right` is a `Lit`, you need to store it to a temporary first (because THMM has `mulm` but not `muln` — there's no "multiply by immediate" instruction for most operations).
 
-Actually, wait — let's be more careful. THMM has `addm` and `addn`, but only `mulm`, `subm`, `divm` (no `muln`, `subn`, `divn`). So:
+THMM has `addm` and `addn`, but only `mulm`, `subm`, and `divm` for the other arithmetic operators:
 - For `Add` with `Lit` on the right: can use `AddN n` directly (no temporary needed)
 - For `Mul`/`Sub`/`Div` with `Lit` on the right: must store the literal to a temporary first, then use `MulM`/`SubM`/`DivM` referencing that temporary
 - For any operation with `Var` on the right: can use `<op>M [var_addr]` directly (no temporary needed)
@@ -565,7 +564,7 @@ data CodeGenState = CodeGenState
   { nextTemp :: Int      -- next available temporary index
   , maxTemp  :: Int      -- high-water mark across the whole program
   , instructions :: [THMMInst]  -- accumulated instructions (in reverse for efficiency)
-  , symTable :: SymbolTable
+  , addressTable :: AddressTable
   }
 ```
 
@@ -666,27 +665,14 @@ Store 96      -- w_num = 12
 
 ### 8.10 Serialization to Hex
 
-Each `THMMInst` maps to a 16-bit hex value:
-
-```haskell
-toHex :: THMMInst -> String
-toHex (LoadM n) = printf "%04X" (0x2000 .|. (n .&. 0xFF))  -- opcode 2
-toHex (LoadN n) = printf "%04X" (0x3000 .|. (n .&. 0xFF))  -- opcode 3
-toHex (Store n) = printf "%04X" (0x4000 .|. (n .&. 0xFF))  -- opcode 4
-toHex (AddM n)  = printf "%04X" (0x7000 .|. (n .&. 0xFF))  -- opcode 7
-toHex (SubM n)  = printf "%04X" (0x8000 .|. (n .&. 0xFF))  -- opcode A (10)
-toHex (MulM n)  = printf "%04X" (0xB000 .|. (n .&. 0xFF))  -- opcode B (11)
-toHex (DivM n)  = printf "%04X" (0xC000 .|. (n .&. 0xFF))  -- opcode C (12)
-toHex Halt      = "1000"
-```
-
-Wait — looking at the THMM encoding table more carefully: the format is `OOOO 0000 NNNN NNNN` where O is the 4-bit opcode and N is the 8-bit operand, with 4 unused bits in between. So:
+Each `THMMInst` maps to a 16-bit hex value. The format is `OOOO 0000 NNNN NNNN`, where `O` is the 4-bit opcode and `N` is the 8-bit operand/address field.
 
 ```haskell
 toHex (LoadM n) = printf "%04X" ((0x2 `shiftL` 12) .|. (n .&. 0xFF))  -- 0x20nn
 toHex (LoadN n) = printf "%04X" ((0x3 `shiftL` 12) .|. (n .&. 0xFF))  -- 0x30nn
 toHex (Store n) = printf "%04X" ((0x4 `shiftL` 12) .|. (n .&. 0xFF))  -- 0x40nn
 toHex (AddM n)  = printf "%04X" ((0x7 `shiftL` 12) .|. (n .&. 0xFF))  -- 0x70nn
+toHex (AddN n)  = printf "%04X" ((0x8 `shiftL` 12) .|. (n .&. 0xFF))  -- 0x80nn
 toHex (SubM n)  = printf "%04X" ((0xA `shiftL` 12) .|. (n .&. 0xFF))  -- 0xA0nn
 toHex (MulM n)  = printf "%04X" ((0xB `shiftL` 12) .|. (n .&. 0xFF))  -- 0xB0nn
 toHex (DivM n)  = printf "%04X" ((0xC `shiftL` 12) .|. (n .&. 0xFF))  -- 0xC0nn
@@ -762,7 +748,7 @@ The compiler should catch and report the following errors:
 
 **Lexer errors:**
 - Unrecognized character (e.g., `@`, `#`)
-- Integer literal too large (outside -128 to 127 range — though technically the lexer reads unsigned, the code generator should verify range)
+- Integer literal too large (outside the 0 to 255 immediate range — though technically the lexer reads unsigned, the code generator verifies range)
 
 **Parser errors:**
 - Missing semicolon
@@ -775,7 +761,7 @@ The compiler should catch and report the following errors:
 - Undefined variable (referenced but never declared) — check symbol table
 - Duplicate variable declaration (same name declared twice) — check symbol table during insertion
 - Program too large (instructions + variables + temporaries > 256 addresses) — check after Pass 1
-- Integer literal out of 8-bit signed range
+- Integer literal out of the 8-bit immediate range
 
 ---
 
@@ -806,7 +792,7 @@ The compiler should catch and report the following errors:
 
 Potential properties:
 - All emitted `Store`/`LoadM`/etc. addresses are within 0-255
-- All emitted `LoadN` values are within -128 to 127
+- All emitted `LoadN` and `AddN` immediates are within 0-255
 - Every declared variable appears in the symbol table exactly once
 - The instruction count from Pass 1 matches the actual number of instructions from Pass 2 (critical correctness property)
 - No variable is referenced before declaration
@@ -845,3 +831,9 @@ To keep scope manageable for a solo project, the following are explicitly out of
 - **Multiple types** — everything is `int`
 - **I/O** — THMM has no I/O mechanism; results are inspected by examining RAM in the simulator
 - **Separate compilation / linking** — one source file in, one program out
+
+---
+
+## 15. Implementation Notes
+
+The implementation was simplified after the initial design. The compiler is kept as a small Cabal project, but the final source files are flattened into a few top-level Haskell modules rather than nested under a source tree. The CPU simulator uses 16-bit two's-complement data words with 8-bit instruction operands, and the compiler uses `addn` for the simple `x + literal` case. These changes keep the implementation easier to inspect while preserving the original project goal: compile a tiny C-like arithmetic language to THMM machine code and run the linear-regression demo end to end.

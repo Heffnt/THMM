@@ -1,0 +1,4 @@
+// Smallest useful test: store a constant and a sum.
+int a = 5;
+int b = 7;
+int c = a + b;
