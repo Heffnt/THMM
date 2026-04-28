@@ -1,16 +1,14 @@
-# THMM
+# TomsHardwareStack
 
 A 100% custom hardware stack, end-to-end and fully inspectable at every layer.
 
-- [**cpu/**](cpu/) — THMM, a 16-bit accumulator CPU with 13 opcodes and 256 words
+- [**THMM/**](THMM/) — THMM, a 16-bit accumulator CPU with 13 opcodes and 256 words
   of shared code/data RAM. Simulated in Python, with every wire of the schematic
-  in [docs/datapath.svg](cpu/docs/datapath.svg) corresponding 1:1 to a variable
-  in [cpu.py](cpu/cpu.py).
+  in [docs/datapath.svg](THMM/docs/datapath.svg) corresponding 1:1 to a variable
+  in [cpu.py](THMM/cpu.py).
 - [**THCC/**](THCC/) — THCC, a compiler from a tiny C-like language to THMM
   machine code. Written in Haskell. Pipeline: Parser → CodeGen (symbolic)
   → linker → hex/asm/bits output.
-- [**THCC_spec.md**](THCC_spec.md) — the implementation specification and
-  design rationale for the compiler and demo program.
 
 The two halves talk through a plain-text file: THCC emits 16-bit bit-string
 words and `cpu.py`'s `load_program` reads them.
@@ -24,7 +22,7 @@ words and `cpu.py`'s `load_program` reads them.
 ## Running the CPU alone
 
 ```bash
-cd cpu
+cd THMM
 python test_cpu.py       # runs the full test suite (cpu + fib + end-to-end)
 # or
 pytest test_cpu.py
@@ -53,7 +51,7 @@ import os
 import re
 import subprocess
 
-from cpu.cpu import init_state, load_program, run, to_sint
+from THMM.cpu import init_state, load_program, run, to_sint
 
 thcc_dir = os.path.join(os.getcwd(), "THCC")
 source = os.path.join(thcc_dir, "examples", "regression.thcc")
@@ -107,8 +105,7 @@ int w = (n * sum_xy - sum_x * sum_y) / (n * sum_xx - sum_x * sum_x);
   For negative values, write `0 - 5` instead of `-5`.
 
 See [THCC/examples/regression.thcc](THCC/examples/regression.thcc) for the
-linear-regression demo and [THCC_spec.md](THCC_spec.md) for the full design.
-Expected assembly and hex outputs are committed as
+linear-regression demo. Expected assembly and hex outputs are committed as
 [THCC/examples/regression.expected.asm](THCC/examples/regression.expected.asm)
 and [THCC/examples/regression.expected.hex](THCC/examples/regression.expected.hex).
 
@@ -120,10 +117,18 @@ and [THCC/examples/regression.expected.hex](THCC/examples/regression.expected.he
 - `--bits`: 16-character bit strings, which is what `cpu.py`'s `load_program`
   consumes directly.
 
+## Coverage
+
+```bash
+cd THCC
+cabal test --enable-coverage
+# HPC HTML lands under dist-newstyle/.../hpc/vanilla/html/hpc_index.html
+```
+
 ## Expected results
 
 - `cd THCC && cabal test`: `29 examples, 0 failures`.
-- `cd cpu && python test_cpu.py`: `45 / 45 passed`.
+- `cd THMM && python test_cpu.py`: `45 / 45 passed`.
 - `cd THCC && cabal haddock --haddock-all`: 100% documented library modules
   (`AST`, `Parser`, `THMM`, `CodeGen`), executable, and test modules.
 - Regression demo result after running on the CPU: `w = 2`, `b = 1`.
@@ -134,12 +139,11 @@ and [THCC/examples/regression.expected.hex](THCC/examples/regression.expected.he
 
 ```
 THMM/
-├── cpu/                   Python simulator + tests
+├── THMM/                  Python simulator + tests
 │   ├── cpu.py
 │   ├── fib.py
 │   ├── test_cpu.py
-│   ├── docs/datapath.svg
-│   └── AGENTS.md
+│   └── docs/datapath.svg
 ├── THCC/                  Haskell compiler
 │   ├── thcc.cabal
 │   ├── Main.hs
@@ -149,6 +153,5 @@ THMM/
 │   ├── THMM.hs
 │   ├── test/*.hs
 │   └── examples/*.thcc
-├── THCC_spec.md
 └── README.md              (this file)
 ```
