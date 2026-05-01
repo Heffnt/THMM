@@ -1,0 +1,12 @@
+// Pythagoras on a 3-4-5 right triangle. Expected: hyp_sq = 25.
+//
+// Pedagogical example for the THCC walkthrough.
+// - Lines 1, 2: trivial loadn/store pairs.
+// - Line 3:     a*a and b*b are each cheap (Var-RHS optimization),
+//               but combining them with `+` forces the compiler
+//               to stash a*a, compute b*b, reload, and add.
+//               This is where the compiler earns its keep.
+
+int a = 4;
+int b = 3;
+int hyp_sq = a * a + b * b;

@@ -1,0 +1,77 @@
+// Caesar cipher decryption (shift -3) with wrap-around.
+//
+// Encrypted: DPDCLQJWKLQJV  ->  Decrypted: AMAZINGTHINGS
+//
+// Per character: p = c + 23 - 26 * floor((c + 23 - 65) / 26)
+// The +23 is (26 - 3); subtracting 26 if the result ran past 'Z' gives
+// the wrap. Note D->A, C->Z exercises both branches.
+
+int K23 = 23;
+int K26 = 26;
+int K65 = 65;
+
+int c0  = 68;   // D
+int c1  = 80;   // P
+int c2  = 68;   // D
+int c3  = 67;   // C
+int c4  = 76;   // L
+int c5  = 81;   // Q
+int c6  = 74;   // J
+int c7  = 87;   // W
+int c8  = 75;   // K
+int c9  = 76;   // L
+int c10 = 81;   // Q
+int c11 = 74;   // J
+int c12 = 86;   // V
+
+int q0 = (c0 + K23 - K65) / K26;
+int v0 = q0 * K26;
+int p0 = c0 + K23 - v0;
+
+int q1 = (c1 + K23 - K65) / K26;
+int v1 = q1 * K26;
+int p1 = c1 + K23 - v1;
+
+int q2 = (c2 + K23 - K65) / K26;
+int v2 = q2 * K26;
+int p2 = c2 + K23 - v2;
+
+int q3 = (c3 + K23 - K65) / K26;
+int v3 = q3 * K26;
+int p3 = c3 + K23 - v3;
+
+int q4 = (c4 + K23 - K65) / K26;
+int v4 = q4 * K26;
+int p4 = c4 + K23 - v4;
+
+int q5 = (c5 + K23 - K65) / K26;
+int v5 = q5 * K26;
+int p5 = c5 + K23 - v5;
+
+int q6 = (c6 + K23 - K65) / K26;
+int v6 = q6 * K26;
+int p6 = c6 + K23 - v6;
+
+int q7 = (c7 + K23 - K65) / K26;
+int v7 = q7 * K26;
+int p7 = c7 + K23 - v7;
+
+int q8 = (c8 + K23 - K65) / K26;
+int v8 = q8 * K26;
+int p8 = c8 + K23 - v8;
+
+int q9 = (c9 + K23 - K65) / K26;
+int v9 = q9 * K26;
+int p9 = c9 + K23 - v9;
+
+int q10 = (c10 + K23 - K65) / K26;
+int v10 = q10 * K26;
+int p10 = c10 + K23 - v10;
+
+int q11 = (c11 + K23 - K65) / K26;
+int v11 = q11 * K26;
+int p11 = c11 + K23 - v11;
+
+int q12 = (c12 + K23 - K65) / K26;
+int v12 = q12 * K26;
+int p12 = c12 + K23 - v12;

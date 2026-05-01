@@ -1,0 +1,23 @@
+// XOR network: a 1-layer "neural" net with hand-picked weights.
+//
+// XOR(x, y) = x + y - 2*x*y -- a polynomial whose two multiplications
+// act as a soft AND. Forward-pass for all four input pairs.
+//
+// Outputs p00, p01, p10, p11 should be 0, 1, 1, 0.
+
+int x_a = 0; int y_a = 0;
+int x_b = 0; int y_b = 1;
+int x_c = 1; int y_c = 0;
+int x_d = 1; int y_d = 1;
+
+int xy_a = x_a * y_a;
+int p_a  = x_a + y_a - xy_a - xy_a;
+
+int xy_b = x_b * y_b;
+int p_b  = x_b + y_b - xy_b - xy_b;
+
+int xy_c = x_c * y_c;
+int p_c  = x_c + y_c - xy_c - xy_c;
+
+int xy_d = x_d * y_d;
+int p_d  = x_d + y_d - xy_d - xy_d;

@@ -1,0 +1,42 @@
+// Cubic Bezier curve sampled at 5 points.
+//
+// Control points form an arch: P0=(0,0), P1=(0,100), P2=(100,100), P3=(100,0).
+// Bernstein basis weights at T = 0/4, 1/4, 2/4, 3/4, 4/4 are scaled by 64
+// so we work in integers and divide by 64 at the end.
+//
+// Expected output (X_T, Y_T):
+//   T=0: (  0,  0)
+//   T=1: ( 15, 56)
+//   T=2: ( 50, 75)
+//   T=3: ( 84, 56)
+//   T=4: (100,  0)
+
+int K64 = 64;
+
+int x0 = 0;   int y0 = 0;
+int x1 = 0;   int y1 = 100;
+int x2 = 100; int y2 = 100;
+int x3 = 100; int y3 = 0;
+
+// T=0: trivially the first control point.
+int X0 = x0;
+int Y0 = y0;
+
+// T=1 basis = (27, 27, 9, 1) / 64
+int b10 = 27; int b11 = 27; int b12 = 9; int b13 = 1;
+int X1 = (b10*x0 + b11*x1 + b12*x2 + b13*x3) / K64;
+int Y1 = (b10*y0 + b11*y1 + b12*y2 + b13*y3) / K64;
+
+// T=2 basis = (8, 24, 24, 8) / 64
+int b20 = 8;  int b21 = 24; int b22 = 24; int b23 = 8;
+int X2 = (b20*x0 + b21*x1 + b22*x2 + b23*x3) / K64;
+int Y2 = (b20*y0 + b21*y1 + b22*y2 + b23*y3) / K64;
+
+// T=3 basis = (1, 9, 27, 27) / 64
+int b30 = 1;  int b31 = 9;  int b32 = 27; int b33 = 27;
+int X3 = (b30*x0 + b31*x1 + b32*x2 + b33*x3) / K64;
+int Y3 = (b30*y0 + b31*y1 + b32*y2 + b33*y3) / K64;
+
+// T=4: trivially the last control point.
+int X4 = x3;
+int Y4 = y3;

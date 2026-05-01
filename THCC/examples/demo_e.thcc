@@ -1,0 +1,25 @@
+// Approximate e using a 7-term Taylor series, scaled by 1000.
+//
+//   e = 1/0! + 1/1! + 1/2! + 1/3! + 1/4! + 1/5! + 1/6!
+//
+// Working in scaled integers, expected total = 2716 ~ 2.716
+// (true e = 2.71828; error of ~2 comes from integer-truncating each term).
+
+int s  = 250 * 4;     // = 1000, the scale factor
+
+int f1 = 1;
+int f2 = 2;
+int f3 = 6;
+int f4 = 24;
+int f5 = 120;
+int f6 = f5 * 6;      // = 720
+
+int t0 = s / f1;      // 1/0! * 1000  (0! = 1! = 1)
+int t1 = s / f1;      // 1/1!
+int t2 = s / f2;      // 1/2!
+int t3 = s / f3;      // 1/3!
+int t4 = s / f4;      // 1/4!
+int t5 = s / f5;      // 1/5!
+int t6 = s / f6;      // 1/6!
+
+int e = t0 + t1 + t2 + t3 + t4 + t5 + t6;

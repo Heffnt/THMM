@@ -1,0 +1,57 @@
+// Projectile motion via 11 unrolled forward-Euler steps.
+//
+// Cannon fired with horizontal velocity vx = 20, initial vertical
+// velocity vy = 50, gravity g = 10. Each step advances (x, y) using
+// the CURRENT vy, then decrements vy. Lands exactly at step 11 (y=0).
+//
+// Output cells x1..x11 / y1..y11 trace the parabolic arc.
+
+int vx = 20;
+int vy0 = 50;
+int g  = 10;
+int x0 = 0;
+int y0 = 0;
+
+int y1  = y0 + vy0;
+int vy1 = vy0 - g;
+int x1  = x0 + vx;
+
+int y2  = y1 + vy1;
+int vy2 = vy1 - g;
+int x2  = x1 + vx;
+
+int y3  = y2 + vy2;
+int vy3 = vy2 - g;
+int x3  = x2 + vx;
+
+int y4  = y3 + vy3;
+int vy4 = vy3 - g;
+int x4  = x3 + vx;
+
+int y5  = y4 + vy4;
+int vy5 = vy4 - g;
+int x5  = x4 + vx;
+
+int y6  = y5 + vy5;
+int vy6 = vy5 - g;
+int x6  = x5 + vx;
+
+int y7  = y6 + vy6;
+int vy7 = vy6 - g;
+int x7  = x6 + vx;
+
+int y8  = y7 + vy7;
+int vy8 = vy7 - g;
+int x8  = x7 + vx;
+
+int y9  = y8 + vy8;
+int vy9 = vy8 - g;
+int x9  = x8 + vx;
+
+int y10  = y9 + vy9;
+int vy10 = vy9 - g;
+int x10  = x9 + vx;
+
+int y11  = y10 + vy10;
+int vy11 = vy10 - g;
+int x11  = x10 + vx;
